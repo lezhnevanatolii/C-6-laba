@@ -1,0 +1,610 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <map>
+#include <algorithm>
+#include <sstream>
+#include <iomanip>
+#include <memory>
+#include <random>
+
+
+template<typename T>
+class MyHashSet {
+private:
+    std::vector<T> elements;
+    int capacity;
+
+    int findIndex(const T& item) const {
+        for (size_t i = 0; i < elements.size(); i++) {
+            if (elements[i] == item) {
+                return static_cast<int>(i);
+            }
+        }
+        return -1;
+    }
+
+    void ensureCapacity() {
+        if (elements.size() >= static_cast<size_t>(capacity * 0.8)) {
+            capacity *= 2;
+        }
+    }
+
+public:
+    MyHashSet() : capacity(10) {}
+
+    MyHashSet(const std::vector<T>& initialElements) : capacity(10) {
+        for (const auto& element : initialElements) {
+            add(element);
+        }
+    }
+
+    bool add(const T& item) {
+        if (contains(item)) {
+            return false;
+        }
+        ensureCapacity();
+        elements.push_back(item);
+        return true;
+    }
+
+    bool remove(const T& item) {
+        int index = findIndex(item);
+        if (index != -1) {
+            elements.erase(elements.begin() + index);
+            return true;
+        }
+        return false;
+    }
+
+    bool contains(const T& item) const {
+        return findIndex(item) != -1;
+    }
+
+    size_t size() const {
+        return elements.size();
+    }
+
+    std::vector<T> toVector() const {
+        return elements;
+    }
+
+    MyHashSet<T> Union(const MyHashSet<T>& other) const {
+        MyHashSet<T> result = *this;
+        for (const auto& item : other.toVector()) {
+            result.add(item);
+        }
+        return result;
+    }
+
+    MyHashSet<T> Except(const MyHashSet<T>& other) const {
+        MyHashSet<T> result;
+        for (const auto& item : elements) {
+            if (!other.contains(item)) {
+                result.add(item);
+            }
+        }
+        return result;
+    }
+
+    MyHashSet<T> Intersect(const MyHashSet<T>& other) const {
+        MyHashSet<T> result;
+        for (const auto& item : elements) {
+            if (other.contains(item)) {
+                result.add(item);
+            }
+        }
+        return result;
+    }
+
+    void print(const std::string& name = "Set") const {
+        std::cout << name << " (" << size() << " элементов): ";
+        if (elements.empty()) {
+            std::cout << "пусто";
+        } else {
+            for (size_t i = 0; i < elements.size(); i++) {
+                std::cout << elements[i];
+                if (i != elements.size() - 1) {
+                    std::cout << ", ";
+                }
+            }
+        }
+        std::cout << std::endl;
+    }
+};
+
+
+class Student {
+public:
+    std::string lastName;
+    std::string firstName;
+    int school;
+    int score;
+    
+    Student() : school(0), score(0) {}
+    Student(const std::string& ln, const std::string& fn, int sch, int sc) 
+        : lastName(ln), firstName(fn), school(sch), score(sc) {}
+};
+
+class SchoolStats {
+public:
+    int totalScore;
+    int studentCount;
+    
+    SchoolStats() : totalScore(0), studentCount(0) {}
+    
+    void addScore(int score) {
+        totalScore += score;
+        studentCount++;
+    }
+    
+    double getAverage() const {
+        if (studentCount == 0) return 0.0;
+        return static_cast<double>(totalScore) / studentCount;
+    }
+};
+
+class StudentDictionary {
+private:
+    std::map<int, SchoolStats> schoolStats;
+    std::vector<Student> allStudents;
+    int totalDistrictScore;
+    int totalDistrictStudents;
+    
+public:
+    StudentDictionary() : totalDistrictScore(0), totalDistrictStudents(0) {}
+    
+    void addStudent(const Student& student) {
+        allStudents.push_back(student);
+        schoolStats[student.school].addScore(student.score);
+        totalDistrictScore += student.score;
+        totalDistrictStudents++;
+    }
+    
+    double getDistrictAverage() const {
+        if (totalDistrictStudents == 0) return 0.0;
+        return static_cast<double>(totalDistrictScore) / totalDistrictStudents;
+    }
+    
+    std::vector<int> findSchoolsAboveDistrictAverage() const {
+        std::vector<int> result;
+        double districtAverage = getDistrictAverage();
+        
+        for (const auto& pair : schoolStats) {
+            if (pair.second.getAverage() > districtAverage) {
+                result.push_back(pair.first);
+            }
+        }
+        
+        return result;
+    }
+    
+    void printResults() const {
+        std::vector<int> schoolsAboveAverage = findSchoolsAboveDistrictAverage();
+        
+        if (schoolsAboveAverage.empty()) {
+            std::cout << "Нет школ со средним баллом выше среднего по району." << std::endl;
+            return;
+        }
+        
+        if (schoolsAboveAverage.size() == 1) {
+            int schoolNumber = schoolsAboveAverage[0];
+            double schoolAverage = schoolStats.at(schoolNumber).getAverage();
+            std::cout << schoolNumber << std::endl;
+            std::cout << "Средний балл = " << std::fixed << std::setprecision(1) << schoolAverage << std::endl;
+        } else {
+            for (size_t i = 0; i < schoolsAboveAverage.size(); i++) {
+                std::cout << schoolsAboveAverage[i];
+                if (i != schoolsAboveAverage.size() - 1) {
+                    std::cout << " ";
+                }
+            }
+            std::cout << std::endl;
+        }
+    }
+};
+
+
+class Gun {
+protected:
+    std::string model;
+    int maxAmmo;
+    int currentAmmo;
+    bool isLoaded;
+    
+public:
+    Gun() : model("Unknown"), maxAmmo(10), currentAmmo(0), isLoaded(false) {}
+    
+    Gun(const std::string& mdl, int max) 
+        : model(mdl), maxAmmo(max), currentAmmo(0), isLoaded(false) {}
+    
+    virtual ~Gun() {}
+    
+    virtual void load(int ammo) {
+        if (ammo <= 0) {
+            std::cout << model << ": Нельзя зарядить неположительное количество патронов." << std::endl;
+            return;
+        }
+        
+        if (currentAmmo + ammo > maxAmmo) {
+            std::cout << model << ": Попытка зарядить " << ammo 
+                      << " патронов, но вместимость только " << maxAmmo 
+                      << ". Будет заряжено " << (maxAmmo - currentAmmo) << "." << std::endl;
+            currentAmmo = maxAmmo;
+        } else {
+            currentAmmo += ammo;
+            std::cout << model << ": Заряжено " << ammo << " патронов." << std::endl;
+        }
+        
+        if (currentAmmo > 0) {
+            isLoaded = true;
+        }
+    }
+    
+    virtual void shoot() {
+        if (!isLoaded) {
+            std::cout << model << ": Оружие не заряжено!" << std::endl;
+            return;
+        }
+        
+        if (currentAmmo <= 0) {
+            std::cout << model << ": Патроны закончились!" << std::endl;
+            isLoaded = false;
+            return;
+        }
+        
+        currentAmmo--;
+        std::cout << model << ": Выстрел! Осталось патронов: " << currentAmmo << std::endl;
+        
+        if (currentAmmo == 0) {
+            isLoaded = false;
+            std::cout << model << ": Обойма пуста." << std::endl;
+        }
+    }
+    
+    virtual void shootMultiple(int shots) {
+        std::cout << model << ": Попытка произвести " << shots << " выстрелов..." << std::endl;
+        
+        for (int i = 0; i < shots; i++) {
+            if (currentAmmo <= 0) {
+                std::cout << model << ": Нельзя стрелять, патроны закончились на " 
+                          << (i+1) << "-м выстреле." << std::endl;
+                break;
+            }
+            shoot();
+        }
+    }
+    
+    virtual void displayInfo() const {
+        std::cout << "\n=== Информация об оружии ===" << std::endl;
+        std::cout << "Модель: " << model << std::endl;
+        std::cout << "Вместимость обоймы: " << maxAmmo << std::endl;
+        std::cout << "Текущее количество патронов: " << currentAmmo << std::endl;
+        std::cout << "Статус: " << (isLoaded ? "Заряжено" : "Не заряжено") << std::endl;
+    }
+};
+
+class AssaultRifle : public Gun {
+private:
+    int fireRate;
+    
+public:
+    AssaultRifle() : Gun(), fireRate(30) {
+        model = "Assault Rifle M4";
+        maxAmmo = 30;
+    }
+    
+    AssaultRifle(int maxAmmoCapacity) : Gun("Assault Rifle", maxAmmoCapacity) {
+        fireRate = maxAmmoCapacity / 2;
+        if (fireRate <= 0) fireRate = 1;
+    }
+    
+    AssaultRifle(int maxAmmoCapacity, int rate) 
+        : Gun("Assault Rifle", maxAmmoCapacity), fireRate(rate) {
+        if (fireRate <= 0) {
+            std::cout << "Скорострельность должна быть положительной. Установлено значение 1." << std::endl;
+            fireRate = 1;
+        }
+    }
+    
+    int getFireRate() const { return fireRate; }
+    
+    virtual void shoot() override {
+        if (!isLoaded) {
+            std::cout << model << ": Оружие не заряжено!" << std::endl;
+            return;
+        }
+        
+        if (currentAmmo <= 0) {
+            std::cout << model << ": Патроны закончились!" << std::endl;
+            isLoaded = false;
+            return;
+        }
+        
+        std::cout << model << ": Автоматическая очередь (" << fireRate << " выстр/сек)..." << std::endl;
+        
+        int shotsToFire = std::min(fireRate, currentAmmo);
+        
+        for (int i = 0; i < shotsToFire; i++) {
+            currentAmmo--;
+            std::cout << model << ": Выстрел " << (i+1) << "/" << shotsToFire 
+                      << "! Осталось патронов: " << currentAmmo << std::endl;
+            
+            if (currentAmmo == 0) {
+                isLoaded = false;
+                std::cout << model << ": Обойма пуста." << std::endl;
+                break;
+            }
+        }
+    }
+    
+    void shootForSeconds(int seconds) {
+        if (seconds <= 0) {
+            std::cout << model << ": Время стрельбы должно быть положительным." << std::endl;
+            return;
+        }
+        
+        if (!isLoaded) {
+            std::cout << model << ": Оружие не заряжено!" << std::endl;
+            return;
+        }
+        
+        if (currentAmmo <= 0) {
+            std::cout << model << ": Патроны закончились!" << std::endl;
+            isLoaded = false;
+            return;
+        }
+        
+        int totalShots = seconds * fireRate;
+        std::cout << model << ": Стрельба в течение " << seconds << " секунд ("
+                  << fireRate << " выстр/сек) = " << totalShots << " выстрелов всего..." << std::endl;
+        
+        shootMultiple(totalShots);
+    }
+    
+    virtual void displayInfo() const override {
+        Gun::displayInfo();
+        std::cout << "Тип: Автомат" << std::endl;
+        std::cout << "Скорострельность: " << fireRate << " выстрелов/сек" << std::endl;
+    }
+};
+
+
+void task1Demo() {
+    std::cout << "\n=== ЗАДАНИЕ 1: MyHashSet ===" << std::endl;
+    
+    std::vector<std::string> musicTracks = {
+        "Bohemian Rhapsody - Queen",
+        "Stairway to Heaven - Led Zeppelin",
+        "Imagine - John Lennon",
+        "Smells Like Teen Spirit - Nirvana",
+        "Billie Jean - Michael Jackson"
+    };
+    
+    MyHashSet<std::string> trackSet(musicTracks);
+    std::cout << "Все музыкальные произведения:" << std::endl;
+    trackSet.print("");
+    
+    std::cout << "\nДемонстрация методов MyHashSet:" << std::endl;
+    std::cout << "Добавление существующего трека: " << trackSet.add("Bohemian Rhapsody - Queen") << std::endl;
+    std::cout << "Добавление нового трека: " << trackSet.add("New Track - New Artist") << std::endl;
+    std::cout << "Содержит трек1: " << trackSet.contains("Bohemian Rhapsody - Queen") << std::endl;
+    std::cout << "Удаление трека2: " << trackSet.remove("New Track - New Artist") << std::endl;
+    
+    MyHashSet<std::string> setA({"A", "B", "C"});
+    MyHashSet<std::string> setB({"B", "C", "D"});
+    
+    std::cout << "\nОперации над множествами:" << std::endl;
+    setA.print("Множество A");
+    setB.print("Множество B");
+    
+    MyHashSet<std::string> unionSet = setA.Union(setB);
+    unionSet.print("A ∪ B (Объединение)");
+    
+    MyHashSet<std::string> intersectSet = setA.Intersect(setB);
+    intersectSet.print("A ∩ B (Пересечение)");
+    
+    MyHashSet<std::string> exceptSet = setA.Except(setB);
+    exceptSet.print("A - B (Разность)");
+}
+
+void task2Demo() {
+    std::cout << "\n=== ЗАДАНИЕ 2: Dictionary (Анализ школ) ===" << std::endl;
+    
+    std::cout << "1. Пример 1: Несколько школ выше среднего" << std::endl;
+    StudentDictionary dict1;
+    
+    dict1.addStudent(Student("Иванов", "Сергей", 50, 87));
+    dict1.addStudent(Student("Петров", "Алексей", 50, 92));
+    dict1.addStudent(Student("Сидоров", "Дмитрий", 50, 78));
+    
+    dict1.addStudent(Student("Смирнов", "Андрей", 87, 65));
+    dict1.addStudent(Student("Кузнецов", "Михаил", 87, 72));
+    
+    dict1.addStudent(Student("Попов", "Иван", 23, 95));
+    dict1.addStudent(Student("Васильев", "Сергей", 23, 88));
+    
+    std::cout << "Ожидаемый вывод: 50 87 23" << std::endl;
+    std::cout << "Фактический вывод: ";
+    dict1.printResults();
+    
+    std::cout << "\n2. Пример 2: Одна школа выше среднего" << std::endl;
+    StudentDictionary dict2;
+    
+    dict2.addStudent(Student("Иванов", "Сергей", 18, 85));
+    dict2.addStudent(Student("Петров", "Алексей", 18, 90));
+    dict2.addStudent(Student("Сидоров", "Дмитрий", 18, 80));
+    
+    dict2.addStudent(Student("Смирнов", "Андрей", 25, 70));
+    dict2.addStudent(Student("Кузнецов", "Михаил", 25, 65));
+    
+    std::cout << "Ожидаемый вывод:" << std::endl;
+    std::cout << "18" << std::endl;
+    std::cout << "Средний балл = 85" << std::endl;
+    std::cout << "Фактический вывод:" << std::endl;
+    dict2.printResults();
+    
+    std::cout << "\n3. Ручной ввод данных" << std::endl;
+    StudentDictionary dict3;
+    
+    std::cout << "Введите количество учеников: ";
+    int n;
+    std::cin >> n;
+    
+    if (n < 5) {
+        std::cout << "Ошибка: должно быть не менее 5 учеников." << std::endl;
+        return;
+    }
+    
+    std::cout << "Введите данные в формате: Фамилия Имя Школа Балл" << std::endl;
+    for (int i = 0; i < n; i++) {
+        std::string lastName, firstName;
+        int school, score;
+        
+        std::cout << "Ученик " << (i+1) << ": ";
+        std::cin >> lastName >> firstName >> school >> score;
+        
+        if (school < 1 || school > 99) {
+            std::cout << "Ошибка: школа должна быть от 1 до 99. Пропуск." << std::endl;
+            continue;
+        }
+        
+        if (score < 1 || score > 100) {
+            std::cout << "Ошибка: балл должен быть от 1 до 100. Пропуск." << std::endl;
+            continue;
+        }
+        
+        dict3.addStudent(Student(lastName, firstName, school, score));
+    }
+    
+    std::cout << "\nРезультат анализа:" << std::endl;
+    dict3.printResults();
+}
+
+void task3Demo() {
+    std::cout << "\n=== ЗАДАНИЕ 3: Наследование (Пистолет и Автомат) ===" << std::endl;
+    
+    std::cout << "\n1. Тестирование базового класса Gun:" << std::endl;
+    Gun basicGun("Test Gun", 10);
+    basicGun.load(8);
+    basicGun.shootMultiple(3);
+    basicGun.displayInfo();
+    
+    std::cout << "\n2. Конструкторы автомата:" << std::endl;
+    
+    std::cout << "a) Конструктор без параметров:" << std::endl;
+    AssaultRifle rifle1;
+    rifle1.displayInfo();
+    
+    std::cout << "\nb) Конструктор с вместимостью обоймы:" << std::endl;
+    AssaultRifle rifle2(40);
+    rifle2.displayInfo();
+    
+    std::cout << "\nc) Конструктор с вместимостью и скорострельностью:" << std::endl;
+    AssaultRifle rifle3(50, 15);
+    rifle3.displayInfo();
+    
+    std::cout << "\n3. Демонстрация стрельбы:" << std::endl;
+    AssaultRifle rifle(30, 10);
+    rifle.load(30);
+    
+    std::cout << "a) Одиночный выстрел (автоматная очередь):" << std::endl;
+    rifle.shoot();
+    
+    std::cout << "\nb) Стрельба в течение 2 секунд:" << std::endl;
+    rifle.shootForSeconds(2);
+    
+    std::cout << "\n4. Полиморфизм:" << std::endl;
+    std::vector<Gun*> weapons;
+    weapons.push_back(new Gun("Pistol", 15));
+    weapons.push_back(new AssaultRifle(30, 10));
+    
+    for (size_t i = 0; i < weapons.size(); i++) {
+        std::cout << "\nОружие " << (i+1) << ":" << std::endl;
+        weapons[i]->load(10);
+        weapons[i]->shoot();
+        weapons[i]->displayInfo();
+    }
+    
+    for (auto weapon : weapons) {
+        delete weapon;
+    }
+}
+
+
+int main() {
+    std::cout << "ЛАБОРАТОРНАЯ РАБОТА №6 - КОЛЛЕКЦИИ И НАСЛЕДОВАНИЕ" << std::endl;
+    std::cout << "==================================================" << std::endl;
+    
+    int choice;
+    do {
+        std::cout << "\nГЛАВНОЕ МЕНЮ:" << std::endl;
+        std::cout << "1 - Задание 1: MyHashSet (музыкальные произведения)" << std::endl;
+        std::cout << "2 - Задание 2: Dictionary (анализ школ)" << std::endl;
+        std::cout << "3 - Задание 3: Наследование (пистолет и автомат)" << std::endl;
+        std::cout << "4 - Все задания (полная демонстрация)" << std::endl;
+        std::cout << "5 - Инструкция по выполнению" << std::endl;
+        std::cout << "0 - Выход" << std::endl;
+        std::cout << "Выберите задание: ";
+        std::cin >> choice;
+        
+        switch (choice) {
+            case 1:
+                task1Demo();
+                break;
+            case 2:
+                task2Demo();
+                break;
+            case 3:
+                task3Demo();
+                break;
+            case 4:
+                task1Demo();
+                task2Demo();
+                task3Demo();
+                break;
+            case 5:
+                std::cout << "\n=== ИНСТРУКЦИЯ ===" << std::endl;
+                std::cout << "\nЗадание 1: MyHashSet" << std::endl;
+                std::cout << "- Реализация неупорядоченного множества" << std::endl;
+                std::cout << "- Методы: add, remove, contains, Union, Intersect, Except" << std::endl;
+                std::cout << "- Применение: музыкальные произведения" << std::endl;
+                
+                std::cout << "\nЗадание 2: Dictionary (анализ школ)" << std::endl;
+                std::cout << "- Анализ результатов экзамена по информатике" << std::endl;
+                std::cout << "- Ввод: Фамилия Имя Школа Балл" << std::endl;
+                std::cout << "- Найти школы со средним баллом выше среднего по району" << std::endl;
+                
+                std::cout << "\nЗадание 3: Наследование" << std::endl;
+                std::cout << "- Базовый класс: Gun (пистолет)" << std::endl;
+                std::cout << "- Производный класс: AssaultRifle (автомат)" << std::endl;
+                std::cout << "- Автомат имеет скорострельность и метод shootForSeconds()" << std::endl;
+                std::cout << "- Демонстрация полиморфизма" << std::endl;
+                break;
+            case 0:
+                std::cout << "Выход из программы..." << std::endl;
+                break;
+            default:
+                std::cout << "Неверный выбор. Попробуйте снова." << std::endl;
+        }
+        
+        if (choice != 0 && choice != 5) {
+            std::cout << "\nНажмите Enter для продолжения...";
+            std::cin.ignore();
+            std::cin.get();
+        }
+        if (choice == 5) {
+            std::cout << "\nНажмите Enter для возврата в меню...";
+            std::cin.ignore();
+            std::cin.get();
+        }
+        
+    } while (choice != 0);
+    
+    std::cout << "\nПрограмма завершена. Нажмите Enter для выхода...";
+    std::cin.ignore();
+    std::cin.get();
+    
+    return 0;
+}
